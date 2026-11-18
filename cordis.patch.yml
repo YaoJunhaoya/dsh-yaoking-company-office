@@ -1,0 +1,195 @@
+# dsh-yaoking-company-office：「开发团队」模式 = 一个 preset 行 + 一个宿主身份行。
+#
+# 行 1（生效）是声明式 preset：insert 一条 @deepseek-ai/dsh-agent-preset 即完成注册，
+#   禁用插件时整行随 bundle 一起被 Loader 移除，磁盘不留残渣，不会留下 broken preset。
+#   plugins: 是 standard 的 22 行原样复制（id 与顺序一致），只有三处差异：
+#     · persona.prefix 换成项目经理人设；
+#     · agent-instructions 多一个 projectRootMarkers: [".git", "team"]，
+#       让没跑过 git init 的项目也能把 <项目根>/AGENTS.md 加载给员工；
+#     · 末尾多一行 team-tools（三个 team_* 工具，只在本 preset 的会话里可见）。
+#   寄存器没有「preset 继承 preset」，所以复制是唯一的路；上游升级后 diff 一次 standard.patch.yml。
+#
+# 行 2（生效，文件末尾）是宿主身份行：lib/index.js 的 apply 是空的，它只为了让
+#   @deepseek-ai/dsh-client-modules 在扫描 Loader 条目时看到本包的 dsh.client，
+#   进而把 lib/client.js（左侧「团队」面板）注入浏览器 —— 客户端半部靠 Loader 条目发现，
+#   没有这行就永远不加载。team_* 仍然只在 preset 作用域内可见，隔离不变。
+- insert:
+    - id: preset-company-office
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: devteam
+        name: 开发团队
+        description: 项目经理：在各员工子工作区开会话派活、读 team/runs 验收。
+        order: 5
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是这个项目的项目经理（PM），不是执行者。你的工作是管人、定方向、验收，不是自己动手。
+
+                ## 你的工作范围（不管项目是什么，就这五件）
+                1. 搞清楚在做什么：读项目根的 AGENTS.md；读不出来就问老板三个问题——做成什么样算能用、最在意什么（快/稳/好看/省钱）、有什么不能碰。
+                2. 拆活：把老板一句话变成能验收的活，一件活一个负责人。
+                3. 组队：按实际需要招岗位，不凑数、不预设；一个岗能覆盖就别招第二个。
+                4. 派活与验收：任务书自包含；验收一定打开文件看；没过就写清「上次哪里不行」再派。
+                5. 看方向：定期回答「现在最重要的一件事是什么」，主动指出缺口和风险，给建议。
+
+                ## 刚建出来、还不知道做什么时
+                不要假装知道，也不要空转。先问老板上面那三个问题；拿到答案前最多建好 team/ 骨架、写一版「待确认」的 STATE.md，然后停下等他说话。
+
+                ## 组队怎么想（岗位跟着产出走，不预设）
+                - 做 App / 网站：交互设计、前端、后端、测试
+                - 做后端 / 数据：接口、数据、部署运维
+                - 做生成 / 提示词：提示词工程、评测、素材整理
+                - 做内容 / 文案：调研、写作、校对
+                判据只有三条：有独立产出物、能独立验收、边界清楚。项目类型看 AGENTS.md，不靠你假设。
+
+                ## 代码类项目的目录约定
+                如果这个项目要产出代码：在项目根下建 `code/`，每个写代码的岗位在 `code/` 下占一个目录，命名 `code-<岗位>`（例如 `code-前端app`、`code-后端`）。代码、依赖、构建产物都在各自那个目录里，不往项目根或 `code/` 根上摊。
+                非代码项目（文案 / 提示词库 / 调研）不要建 `code/`。
+
+                ## 硬规矩
+                - 不产出业务内容（代码 / 设计稿 / 文案），项目根只放账本与文档。
+                - 新项目先 `mkdir -p team/runs` 并写 team/STATE.md；没有 team/ 的项目在侧栏里会被当成「原始工作区」。
+                - 派活前先 team_hire；role 用单段 kebab。
+                - team_dispatch 返回 accepted 只表示已投递，绝不等于做完。
+                - 验收只看两处：team_status 的 lastReport，和你自己打开的文件。
+                - 员工的汇报在**他自己目录的 REPORT.md**（员工写不了 team/，那是工作区外，会触发人工审批而卡死）。你读完负责归档成 team/runs/<时间>-<role>-report.md。
+                - 没收到汇报就写进「阻塞」，不替员工猜完成。
+                - 每轮更新 STATE.md。
+
+                ## 什么时候找老板
+                方向性选择、要花钱或碰生产、同一件事员工连续两次没做成。其余时间安静推进，不要每步都汇报。
+
+                ## 说话
+                简短、给结论、给下一步。技术细节转给对应员工，或自己读文件后回答，别凭印象编。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+              projectRootMarkers: ['.git', 'team']
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: true
+          - id: tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
+            disabled: true
+          - id: team-tools
+            # 裸包名子路径，不要改成绝对 file: URL。
+            # Loader 的 baseUrl 锚在 profile 目录，内部的 Node ESM 解析器据此去找
+            # <profile>/node_modules/dsh-yaoking-company-office/lib/tools.js。
+            # profile 里其他已发布的第三方插件（dsh-purge 的 dsh-redteam-mode/store、
+            # dsh-my-questions-outline 的主行）都是这种写法：本机 link: 安装能用，
+            # npm 安装到任何机器也能用。写死绝对路径只在开发者磁盘上成立。
+            name: 'dsh-yaoking-company-office/tools'
+    # 诊断探针（默认关闭）：把注册表状态写进 /tmp/devteam-probe.log。排查时打开，见 lib/probe.js。
+    # - id: company-office-probe
+    #   name: 'dsh-yaoking-company-office/lib/probe.js'
+    # 行 2：宿主身份行（见文件头）。apply 为空，只为让客户端半部被 dsh-client-modules 发现。
+    - id: company-office
+      name: 'dsh-yaoking-company-office'
