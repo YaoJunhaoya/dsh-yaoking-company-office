@@ -9,6 +9,10 @@
 
 插件还会在左栏挂一块**团队面板**，把「项目 → 员工 → 会话」摊平给你看，不用在原生侧栏里翻。
 
+- npm：<https://www.npmjs.com/package/dsh-yaoking-company-office>
+- GitHub：<https://github.com/YaoJunhaoya/dsh-yaoking-company-office>
+- 装法见 [三、安装](#三安装)，一句话版本：DSH 的「插件」页 → 安装第三方插件 → 贴包名 → 重启。
+
 ---
 
 ## 一、这套东西是怎么跑的
@@ -70,26 +74,34 @@ PM 派活是**全自动**的：你在 PM 会话里说一句话，他调 `team_hi
 
 ## 三、安装
 
-插件装在 DSH 的 profile 目录里（默认 `~/.dsh/profiles/web`）。
+DSH 插件装在**当前 profile** 里（默认 `~/.dsh/profiles/web`）。下面三种装法按推荐顺序，任选其一。
 
-### 方式 A：npm
+### 方法 1：在 DSH 界面里点几下（推荐）
+
+DSH 自带第三方插件安装器，会**顺手把这个包加进 profile 的 bundle 列表**，不用手改配置文件。
+
+1. 打开 DSH → 进入 **「插件」**（插件管理）
+2. 点 **「安装第三方插件」**
+3. 「包名或地址」填包名：
+
+   ```
+   dsh-yaoking-company-office
+   ```
+
+4. 「安装源」按网络选：国内选 **「淘宝镜像」**，海外选 **「npm 官方源」**
+5. 装完按提示 **完全重启 DSH**（重启进程，不是刷新页面）
+
+> 从 GitHub 装也一样：第 3 步贴 `https://github.com/YaoJunhaoya/dsh-yaoking-company-office`，代码是同一份。
+> 安装器底层用 pnpm，若报 `pnpm-missing`，先 `npm i -g pnpm` 再装。
+
+### 方法 2：命令行 `npm i`
 
 ```bash
 cd ~/.dsh/profiles/web
 npm i dsh-yaoking-company-office
 ```
 
-### 方式 B：本地源码（想改代码时用）
-
-```bash
-git clone https://github.com/YaoJunhaoya/dsh-yaoking-company-office.git
-cd ~/.dsh/profiles/web
-npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
-```
-
-### 两步都要做：把包名加进 profile 的 bundles
-
-`npm i` / `dsh plugin add` **不会**帮你写这个数组，得手工加，而且要加在**最后一行**（bundle 按顺序套用，本插件要叠在基础 bundle 之上）：
+⚠️ **命令行装完还要手工加 bundle**，否则包装上了但不加载——`npm i` 和 `dsh plugin add` 都只写 `dependencies`，**不会**写 `dsh.profile.bundles`：
 
 `~/.dsh/profiles/web/package.json`
 
@@ -108,12 +120,25 @@ npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
 }
 ```
 
-### 第三步：**完全重启 dsh**
+这一行必须加在**最后**：bundle 按顺序套用，本插件要叠在基础 bundle 之上。
 
-这个版本的热更新对 patch 不生效，必须把进程杀掉重开。重启后检查两件事：
+### 方法 3：本地源码（想改代码 / 离线装）
 
-1. 新建会话的模式下拉里有 **「开发团队」**；
-2. 左栏出现 **「团队面板」**（没有就先点一下「▾ 展开团队」）。
+```bash
+git clone https://github.com/YaoJunhaoya/dsh-yaoking-company-office.git
+cd ~/.dsh/profiles/web
+npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
+```
+
+同样要按方法 2 手工加 bundle。用 `link:` 装的好处是改完源码重启就生效，不用重装。
+
+### 装完检查三件事
+
+**完全重启** DSH 后（进程杀掉重开）：
+
+1. 「插件」页里能看到 `dsh-yaoking-company-office`，且没有 `broken`；
+2. 新建会话的模式下拉里出现 **「开发团队」**；
+3. 左栏出现 **「团队面板」**（如果只剩一个小胶囊，点 **「▾ 展开团队」**）。
 
 ---
 
@@ -189,6 +214,10 @@ npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
 ---
 
 ## 八、卸载
+
+**界面卸载（推荐）**：「插件」页里找到 `dsh-yaoking-company-office` → 移除 → 重启 DSH。
+
+**命令行卸载**：
 
 ```bash
 # 1. 从 ~/.dsh/profiles/web/package.json 的 dsh.profile.bundles 里删掉这一行
