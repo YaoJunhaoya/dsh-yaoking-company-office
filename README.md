@@ -1,5 +1,8 @@
 # dsh-yaoking-company-office
 
+[![npm version](https://img.shields.io/npm/v/dsh-yaoking-company-office.svg)](https://www.npmjs.com/package/dsh-yaoking-company-office)
+[![license](https://img.shields.io/npm/l/dsh-yaoking-company-office.svg)](LICENSE)
+
 > DeepSeek Harness（DSH）插件：把「我一个人跟一个 AI 聊」变成「我带着一个团队做事」。
 
 装上之后，DSH 的模式下拉里会多一个 **「开发团队」**。选它新建会话，对面坐的是**项目经理**——他不写代码、不写文案，只做四件事：搞清楚要做什么、拆活、招人、验收。真正干活的是他招来的员工，而每个员工是**项目下的一个子工作区**：有自己的会话列表、能并行开会话、能自己派 subagent。
@@ -75,8 +78,6 @@ PM 派活是**全自动**的：你在 PM 会话里说一句话，他调 `team_hi
 cd ~/.dsh/profiles/web
 npm i dsh-yaoking-company-office
 ```
-
-> 如果 npm 上还查不到这个包（还没发版），用下面的方式 B。
 
 ### 方式 B：本地源码（想改代码时用）
 
