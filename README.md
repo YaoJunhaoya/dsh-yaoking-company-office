@@ -93,6 +93,7 @@ DSH 自带第三方插件安装器，会**顺手把这个包加进 profile 的 b
 
 > 从 GitHub 装也一样：第 3 步贴 `https://github.com/YaoJunhaoya/dsh-yaoking-company-office`，代码是同一份。
 > 安装器底层用 pnpm，若报 `pnpm-missing`，先 `npm i -g pnpm` 再装。
+> 已经装过旧版、要升级时：团队面板会盖住原生侧栏的「插件」入口，先点 **「收起面板 ▴」** 再进去。
 
 ### 方法 2：命令行 `npm i`
 
