@@ -11,7 +11,7 @@
 
 - npm：<https://www.npmjs.com/package/dsh-yaoking-company-office>
 - GitHub：<https://github.com/YaoJunhaoya/dsh-yaoking-company-office>
-- 装法见 [三、安装](#三安装)。不会命令行：DSH 的「插件」页 → 安装第三方插件 → 贴包名 → 重启。会命令行，一条就够：`dsh plugin --profile web add dsh-yaoking-company-office`（Windows / macOS / Linux 通用）。
+- 装法见 [三、安装](#三安装)，升级见同一节的「更新（已经装过的人）」。不会命令行：DSH 的「插件」页 → 安装第三方插件 → 贴包名 → 重启。会命令行，一条就够：`dsh plugin --profile web add dsh-yaoking-company-office`（Windows / macOS / Linux 通用）。
 
 ---
 
@@ -180,6 +180,62 @@ npm i "link:D:\code\dsh-yaoking-company-office"
 
 同样要按方法 3 手工加 bundle。用 `link:` 装的好处是改完源码重启就生效，不用重装。
 
+### 更新（已经装过的人）
+
+装过一次以后，**不要重跑「方法 2」那条不带版本号的安装命令**：pnpm 看到 lockfile 里已有的旧版本（`^1.0.1` 或 `1.0.1`）就认为满足，直接跳过 resolution，终端显示 `Already up to date`，版本停在原地。
+
+**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.1.2**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
+
+```bash
+dsh plugin --profile web add dsh-yaoking-company-office@1.1.2
+```
+
+国内默认源（`registry.npmmirror.com`）**滞后**，刚发布的版本常常还没同步。想拿刚发布的版本，显式走官方源：
+
+```bash
+dsh plugin --profile web add dsh-yaoking-company-office@1.1.2 --registry=https://registry.npmjs.org/
+```
+
+> 这条会同时把 `dependencies` 写成具体版本、把包装进 `node_modules`；`dsh.profile.bundles` 里本来就有本包，**不会重复登记**（实测仍只有一条）。
+
+**备选写法（不想记版本号）**：绕过 dsh 包装，直接进 profile 目录用 pnpm 装 `@latest`。
+
+macOS / Linux：
+
+```bash
+cd ~/.dsh/profiles/web
+pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org/
+```
+
+Windows（PowerShell）：
+
+```powershell
+cd $env:USERPROFILE\.dsh\profiles\web
+pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org/
+```
+
+> 这条路只更新 `node_modules` 与 `dependencies`，**不碰** `dsh.profile.bundles`——已经装过的人那里本来就有这一条，不用再加。
+
+> pnpm 10.16 起默认把 **24 小时内新发布**的版本暂缓安装（`minimumReleaseAge=1440`，DSH 新建的 profile 也是这个默认）。所以包刚发布就跑 `@latest`，pnpm 会解析回旧版，终端显示 `Lockfile is up to date, resolution step is skipped`。要立刻拿到刚发布的版本，临时关掉这道暂缓（只影响这一次命令）：
+>
+> ```bash
+> pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org/ --config.minimumReleaseAge=0
+> ```
+>
+> 不急就等发布满 24 小时，用上面的原命令即可。
+
+> ⚠️ **这两条别用**：`dsh plugin --profile web update dsh-yaoking-company-office --latest` 和 `dsh plugin --profile web add dsh-yaoking-company-office@latest` **当前都不会真的升级**——pnpm 认为 lockfile 里的版本范围已经满足，直接跳过 resolution，版本停在旧版（实测停在 1.0.1，`--registry` 带不带都一样）。所以升级要么带具体版本号（主推写法），要么直接跑 pnpm（备选写法）。
+
+**更新完必须完全重启 DSH**：杀进程重开，刷新页面不算——宿主侧的会话守卫与 `team_report` 只在启动时注册。
+
+更新**不会动你的项目数据**：`team/`、两份 `AGENTS.md` 都在项目目录里；会话存在 `~/.dsh/sessions/`（Windows：`%USERPROFILE%\.dsh\sessions\`）。插件只换代码。
+
+**更新后自查三条**：
+
+1. 「插件」页里 `dsh-yaoking-company-office` 的版本号变成新版本，且没有 `broken`；
+2. 新建会话的模式下拉里 **「开发团队」** 还在；
+3. 左栏 **「团队面板」** 正常出现（只剩一个小胶囊就点 **「▾ 展开团队」**）。
+
 ### 装完检查三件事
 
 **任一种装法都要「完全重启」DSH：杀进程重开，刷新页面不算。**
@@ -314,6 +370,10 @@ cd $env:USERPROFILE\.dsh\profiles\web; npm rm dsh-yaoking-company-office
 - 没有群聊/作战室视图。员工之间靠文件和 PM 传递，不靠互相说话。
 
 ## 更新日志
+
+### 1.1.2
+
+- **文档修订（代码未动）**：「三、安装」新增「更新（已经装过的人）」，放在安装方法与「装完检查三件事」之间。主推 `dsh plugin --profile web add dsh-yaoking-company-office@<版本号>`（国内用官方源 `--registry=https://registry.npmjs.org/`）；备选进 profile 目录直接跑 `pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org/`，给出 macOS / Linux 与 Windows PowerShell 两种 `cd`。写明 `dsh plugin … update` 与 `… add <包名>@latest` 当前不会真的升级（pnpm 跳过 resolution）、更新后必须完全重启、更新不动项目数据，以及更新后自查三条。首部「装法见三、安装」补「升级见同一节的『更新』」。
 
 ### 1.1.1
 
