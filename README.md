@@ -11,7 +11,7 @@
 
 - npm：<https://www.npmjs.com/package/dsh-yaoking-company-office>
 - GitHub：<https://github.com/YaoJunhaoya/dsh-yaoking-company-office>
-- 装法见 [三、安装](#三安装)，一句话版本：DSH 的「插件」页 → 安装第三方插件 → 贴包名 → 重启。
+- 装法见 [三、安装](#三安装)。不会命令行：DSH 的「插件」页 → 安装第三方插件 → 贴包名 → 重启。会命令行，一条就够：`dsh plugin --profile web add dsh-yaoking-company-office`（Windows / macOS / Linux 通用）。
 
 ---
 
@@ -74,9 +74,9 @@ PM 派活是**全自动**的：你在 PM 会话里说一句话，他调 `team_hi
 
 ## 三、安装
 
-DSH 插件装在**当前 profile** 里（默认 `~/.dsh/profiles/web`）。下面三种装法按推荐顺序，任选其一。
+DSH 插件装在**当前 profile** 里（默认 `~/.dsh/profiles/web`；Windows 是 `%USERPROFILE%\.dsh\profiles\web`）。下面四种装法按推荐顺序，任选其一。
 
-### 方法 1：在 DSH 界面里点几下（推荐）
+### 方法 1：在 DSH 界面里点几下（推荐，跨平台）
 
 DSH 自带第三方插件安装器，会**顺手把这个包加进 profile 的 bundle 列表**，不用手改配置文件。
 
@@ -95,16 +95,49 @@ DSH 自带第三方插件安装器，会**顺手把这个包加进 profile 的 b
 > 安装器底层用 pnpm，若报 `pnpm-missing`，先 `npm i -g pnpm` 再装。
 > 已经装过旧版、要升级时：团队面板会盖住原生侧栏的「插件」入口，先点 **「收起面板 ▴」** 再进去。
 
-### 方法 2：命令行 `npm i`
+### 方法 2：终端一条命令（推荐给命令行党，Windows / macOS / Linux 通用）
+
+DSH 本体是 Node 应用，`dsh plugin` 在 PowerShell、Windows Terminal、macOS / Linux 的终端里用法完全一样：
+
+```bash
+dsh plugin --profile web add dsh-yaoking-company-office
+```
+
+- 装完会**自动**把这个包追加到该 profile `package.json` 的 `dsh.profile.bundles` **末尾**，不用再手改配置。
+- `dsh plugin` 后面的参数是**原样转发给 pnpm** 的，所以 pnpm 的参数可以直接跟在后面：`dsh plugin --profile web add <包名> --registry=<源>`。
+- 装完**完全重启 DSH**（杀进程重开）。
+
+> ⚠️ **国内镜像会滞后**。默认源指向国内镜像（`registry.npmmirror.com`）时，实测（2026-11-19）镜像还停在 **1.0.1**，官方源已是 **1.1.0**——镜像同步通常要等一段时间。想要刚发布的版本，就把源显式指过去：
+>
+> ```bash
+> dsh plugin --profile web add dsh-yaoking-company-office --registry=https://registry.npmjs.org/
+> ```
+>
+> 实测这条能装到官方源上的最新版（当时是 **1.1.0**），且 `lib/guard.js`（会话守卫）在包里。
+
+**Windows 补充**：profile 路径是 `%USERPROFILE%\.dsh\profiles\web`；PowerShell 里进这个目录写 `cd $env:USERPROFILE\.dsh\profiles\web`。命令本身不用改，`dsh plugin …` 与 mac / Linux 一字不差。
+
+（插件在 Windows 上跑起来会用到 pwsh 工具，preset 里已按平台切换 `disabled`，那是运行期的事，与安装无关。）
+
+### 方法 3：`npm i` + 手工加 bundle
+
+macOS / Linux：
 
 ```bash
 cd ~/.dsh/profiles/web
 npm i dsh-yaoking-company-office
 ```
 
-⚠️ **命令行装完还要手工加 bundle**，否则包装上了但不加载——`npm i` 和 `dsh plugin add` 都只写 `dependencies`，**不会**写 `dsh.profile.bundles`：
+Windows（PowerShell）：
 
-`~/.dsh/profiles/web/package.json`
+```powershell
+cd $env:USERPROFILE\.dsh\profiles\web
+npm i dsh-yaoking-company-office
+```
+
+⚠️ **这样装完还要手工加 bundle**，否则包装上了但不加载——`npm i` 只写 `dependencies`，**不会**写 `dsh.profile.bundles`（这正是它不如方法 2 的地方）。
+
+`~/.dsh/profiles/web/package.json`（Windows：`%USERPROFILE%\.dsh\profiles\web\package.json`）
 
 ```json
 {
@@ -123,21 +156,35 @@ npm i dsh-yaoking-company-office
 
 这一行必须加在**最后**：bundle 按顺序套用，本插件要叠在基础 bundle 之上。
 
-### 方法 3：本地源码（想改代码 / 离线装）
+### 方法 4：本地源码 `link:`（想改代码 / 离线装）
+
+先把源码克隆到本地：
 
 ```bash
 git clone https://github.com/YaoJunhaoya/dsh-yaoking-company-office.git
+```
+
+macOS / Linux：
+
+```bash
 cd ~/.dsh/profiles/web
 npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
 ```
 
-同样要按方法 2 手工加 bundle。用 `link:` 装的好处是改完源码重启就生效，不用重装。
+Windows（PowerShell，路径按你实际克隆的位置改）：
+
+```powershell
+cd $env:USERPROFILE\.dsh\profiles\web
+npm i "link:D:\code\dsh-yaoking-company-office"
+```
+
+同样要按方法 3 手工加 bundle。用 `link:` 装的好处是改完源码重启就生效，不用重装。
 
 ### 装完检查三件事
 
-**完全重启** DSH 后（进程杀掉重开）：
+**任一种装法都要「完全重启」DSH：杀进程重开，刷新页面不算。**
 
-> 1.1.0 起新增了宿主侧的「会话守卫」和 `team_report`，这两样**只在启动时注册**：只刷新页面、只热加载都看不到，必须杀掉进程重开一次。
+> 1.1.0 起新增的宿主侧「会话守卫」和 `team_report` **只在启动时注册**：只刷新页面、只热加载都看不到，必须杀掉进程重开一次。
 
 1. 「插件」页里能看到 `dsh-yaoking-company-office`，且没有 `broken`；
 2. 新建会话的模式下拉里出现 **「开发团队」**；
@@ -174,11 +221,11 @@ npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
 2. **别让员工写 `../team/`。** 员工是「完全权限」，文件系统并不拦他；隔离只在工具通道（`team_*` 只注册给 PM 的预设），这条靠的是约定，不是权限。员工的汇报固定写在**自己目录的 `REPORT.md`**，由 PM 用 `team_report` 归档进 `team/runs/`。这条已经写进员工 AGENTS.md，你别去改。
 3. **别手工编辑 `team/runs/` 里的 front-matter。** `taskId` 是 task 和 report 的**唯一**连接键，改坏了配对就断，员工看起来永远没交活。
 4. **别删 `team/` 目录。** 面板靠 `team/` 判断「这是项目还是普通工作区」。删了，项目就掉回「原始工作区」分组里（不会丢文件，但你得重新登记）。
-5. **别把这个插件装进多个 profile 后互相同步会话目录。** 会话是存在 `~/.dsh/sessions/` 下的，两个 DSH 实例同时跑同一批会话会互相踩。
+5. **别把这个插件装进多个 profile 后互相同步会话目录。** 会话是存在 `~/.dsh/sessions/`（Windows：`%USERPROFILE%\.dsh\sessions\`）下的，两个 DSH 实例同时跑同一批会话会互相踩。
 
 ### 一些我踩过的坑
 
-- **`dsh plugin add` 只转发给包管理器，不写 bundles 数组。** 装完模式没出现，八成是漏了上面第三步。
+- **`npm i` 只写 `dependencies`，不写 bundles 数组**——这也正是 `dsh plugin add` 存在的理由（它会自动追加到 `dsh.profile.bundles`）。用 `npm i` 装完模式没出现，八成是漏了方法 3 那步手工加 bundle。
 - **`EPERM … package.json.lock`**：DSH 在跑的时候装插件可能抢锁，先关掉 dsh 再装。
 - **面板盖住了原生侧栏的一部分**（插件、自动化任务那些行）。这是刻意的取舍——不盖就得接管整个单槽侧栏，那会把原生的归档/删除/拖拽排序全弄丢。用「收起面板」切回去。
 - **看不到「项目 └ 员工」的嵌套**：原生侧栏要切 `View options → Group by → Workspace Tree`。面板里本来就是嵌套的。
@@ -237,15 +284,20 @@ npm i "link:/你克隆到的路径/dsh-yaoking-company-office"
 **命令行卸载**：
 
 ```bash
-# 1. 从 ~/.dsh/profiles/web/package.json 的 dsh.profile.bundles 里删掉这一行
+# 1. 从 profile 的 dsh.profile.bundles 里删掉这一行
+#    macOS / Linux: ~/.dsh/profiles/web/package.json
+#    Windows:       %USERPROFILE%\.dsh\profiles\web\package.json
 # 2. 卸包
+#    macOS / Linux
 cd ~/.dsh/profiles/web && npm rm dsh-yaoking-company-office
+#    Windows（PowerShell）
+cd $env:USERPROFILE\.dsh\profiles\web; npm rm dsh-yaoking-company-office
 # 3. 重启 dsh
 ```
 
 卸载**不会**删你的东西：项目目录、两份 `AGENTS.md`、`team/`、所有会话、工作区注册全部原样留着（插件从不调 `workspaceRegistry.delete`）。只是模式下拉里不再有「开发团队」、面板不再出现。
 
-要彻底清干净，手动删两处：项目文件夹 + `~/.dsh/sessions/<对应路径编码>/`。
+要彻底清干净，手动删两处：项目文件夹 + `~/.dsh/sessions/<对应路径编码>/`（Windows：`%USERPROFILE%\.dsh\sessions\<对应路径编码>\`）。
 
 ---
 
@@ -262,6 +314,10 @@ cd ~/.dsh/profiles/web && npm rm dsh-yaoking-company-office
 - 没有群聊/作战室视图。员工之间靠文件和 PM 传递，不靠互相说话。
 
 ## 更新日志
+
+### 1.1.1
+
+- **文档修订（代码未动）**：「三、安装」重排成四节，新增「方法 2：终端一条命令」——`dsh plugin --profile web add dsh-yaoking-company-office` 会自动把包写进 `dsh.profile.bundles`，Windows / macOS / Linux 通用；补上 Windows 的 profile 路径（`%USERPROFILE%\.dsh\profiles\web`）、`cd $env:USERPROFILE\…` 与 `link:D:\…` 写法；标注国内镜像会滞后（默认源 1.0.1、官方源 1.1.0）及 `--registry=` 的用法。
 
 ### 1.1.0
 
