@@ -1,4 +1,4 @@
-# dsh-yaoking-company-office：「开发团队」模式 = 一个 preset 行 + 一个宿主身份行。
+# dsh-yaoking-company-office：「开发团队」模式 = 一个 preset 行 + 一个宿主身份行 + 一个会话守卫行。
 #
 # 行 1（生效）是声明式 preset：insert 一条 @deepseek-ai/dsh-agent-preset 即完成注册，
 #   禁用插件时整行随 bundle 一起被 Loader 移除，磁盘不留残渣，不会留下 broken preset。
@@ -9,7 +9,7 @@
 #     · 末尾多一行 team-tools（三个 team_* 工具，只在本 preset 的会话里可见）。
 #   寄存器没有「preset 继承 preset」，所以复制是唯一的路；上游升级后 diff 一次 standard.patch.yml。
 #
-# 行 2（生效，文件末尾）是宿主身份行：lib/index.js 的 apply 是空的，它只为了让
+# 行 2（生效）是宿主身份行：lib/index.js 的 apply 是空的，它只为了让
 #   @deepseek-ai/dsh-client-modules 在扫描 Loader 条目时看到本包的 dsh.client，
 #   进而把 lib/client.js（左侧「团队」面板）注入浏览器 —— 客户端半部靠 Loader 条目发现，
 #   没有这行就永远不加载。team_* 仍然只在 preset 作用域内可见，隔离不变。
@@ -193,3 +193,12 @@
     # 行 2：宿主身份行（见文件头）。apply 为空，只为让客户端半部被 dsh-client-modules 发现。
     - id: company-office
       name: 'dsh-yaoking-company-office'
+    # 行 3（生效，文件末尾）：宿主侧「会话守卫」（lib/guard.js）。
+    # 项目工作区（自身或上一层带 team/ 或 .git）里的会话一创建/一恢复就自动 pin
+    # 「完全权限」，审批请求自动返回 allowed-once —— 老板不用再手动点。
+    # 开关在 lib/guard.js 顶部的 AUTO_FULL_ACCESS / AUTO_APPROVE。
+    # 它必须和 preset 行平级（bundle 根作用域）：preset 作用域只管单个会话，
+    # 而守卫要在根上收所有会话的 session/created 与 approval/request。
+    # 与 team_* 无关：那三个工具仍只在 preset-company-office 作用域内可见，隔离不变。
+    - id: company-office-guard
+      name: 'dsh-yaoking-company-office/guard'
