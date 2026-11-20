@@ -13,7 +13,29 @@
 #   @deepseek-ai/dsh-client-modules 在扫描 Loader 条目时看到本包的 dsh.client，
 #   进而把 lib/client.js（左侧「团队」面板）注入浏览器 —— 客户端半部靠 Loader 条目发现，
 #   没有这行就永远不加载。team_* 仍然只在 preset 作用域内可见，隔离不变。
+#
+# ── macOS 固定用应用内目录浏览器，不用系统 NSOpenPanel（本文件最前面的三行 patch）──
+# 为什么：dsh-web-app 的 auto 后端在 macOS + loopback 下解析成 native，走
+#   `osascript -l JavaScript` 调 NSOpenPanel（dsh-host-directory-picker-native 的 MAC_PANEL）。
+#   脚本宿主里的 NSOpenPanel 侧栏会被沙箱/TCC 与前台激活判灰（整块点不动、偶尔又能点），
+#   而且不能当场新建文件夹。这是 macOS 面板自身的问题，DSH 与插件都改不了它。
+# 做法：bundle patch 层晚于 dsh-web-app，按 id 盖掉 auto 行（只在 darwin 禁用），
+#   再插入 browse 后端的宿主面 + 客户端面；两者都只在非 darwin 禁用，所以别的平台维持原样。
+#   browse 是纯应用内浏览器：面包屑（路径可编辑）、子目录列表、新建文件夹，跨平台/远端都能用。
+#   面板客户端（lib/client.js）已做后端自适配：listDirectory 可用就开自绘对话框，
+#   抛 directory-picker/unavailable 时回退原来的 pickDirectory()（native 平台不回归）。
+# 回滚：把下面 `- id: directory-picker` 两行，以及 insert 列表里的 directory-picker-browse /
+#   directory-picker-browse-ui 两行删掉即可；macOS 立刻回到 dsh-web-app 的 auto 后端（系统面板）。
+# 注意：不要再写第二个顶层 `insert:`，browse 两行必须并进下面同一个 insert 列表。
+- id: directory-picker
+  disabled: !!js process.platform === 'darwin'
 - insert:
+    - id: directory-picker-browse
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
+      disabled: !!js process.platform !== 'darwin'
+    - id: directory-picker-browse-ui
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
+      disabled: !!js process.platform !== 'darwin'
     - id: preset-company-office
       name: '@deepseek-ai/dsh-agent-preset'
       config:

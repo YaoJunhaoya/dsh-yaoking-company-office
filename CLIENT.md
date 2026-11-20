@@ -46,6 +46,10 @@
   不新增硬编码色值；`color-mix` 都带 token 兜底（badge 的 info 底色先写了 `interactive-bg-hover-accent`）。
 
 ## 4 数据层（复用，未重写）
+- **macOS 的目录后端由 `cordis.patch.yml` 固定成 browse**：bundle patch 按 id 禁用
+  `@deepseek-ai/dsh-host-directory-picker-auto`（只在 darwin），并插入
+  `dsh-host-directory-picker-browse` + `dsh-client-ui-directory-picker-browse`（只在非 darwin 禁用）。
+  原因与回滚方法写在该文件头部；macOS 上因此不再弹 NSOpenPanel，`ui.listDirectory` 可用。
 - `ctx.get("workspaces").list` / `ctx.get("sessions").list` 的 snapshot（`getSnapshot/subscribe`）经 `useSnapshot` 订阅。
 - `team/` 探测一字未改：`probeOf` 先 `remote.workspaceFiles.list(sessionId,".")`，再回退 `remote.directoryPicker.list(path)`
   （macOS 本地只挂 native picker 时后者 unavailable，见 `$DSH/dsh-api-workspace-controller/lib/index.js:497`）。
@@ -58,8 +62,22 @@
   （`$DSH/dsh-api-workspace-files/lib/types/types.d.ts:83`）。拿不到（无会话作用域/目录不存在）就不显示徽章，不报错。
 
 ## 5 交互
-- `＋ 新建项目工作区`：`uiWorkspace.pickDirectory()`（`$DSH/dsh-client-ui-workspace/lib/client.js:1559`）→
-  `ctx.get("workspaces").create({ path })`（`$DSH/dsh-api-workspace-controller/lib/client.js:393`）；pickDirectory 不存在时回退 `remote.directoryPicker.pick()`；都没有就提示用原生 ＋。
+- `＋ 新建项目工作区` 后端自适配（`addWorkspace`）：
+  1. `uiWorkspace.listDirectory` 是函数（browse 后端）→ 先 `await listDirectory()` 读宿主主目录，成功就打开
+     **插件自绘的选目录对话框**（不复用 `sidebar.workspaces.directoryFlow` 槽位，避免与 browse 面抢槽）。
+  2. 调用抛 `DirectoryBrowseError` 且 `rpcError.code === "directory-picker/unavailable"` → 回退原路径
+     `uiWorkspace.pickDirectory()`（native 平台保持原行为）；`listDirectory` 不存在时也直接回退。
+  3. 其它浏览错误（如 `directory-unreadable`）不换系统面板，留在对话框内显示，并允许手输绝对路径重试。
+  拿到 path 之后仍是原来的 `workspaces.create({ path })` → `markDeclared(path)` → 开 `devteam` PM 会话。
+- 自绘对话框（`PickerDialog`，class 前缀 `dt-pick-*`，样式并入同一个 `<style>`）：
+  - 顶部面包屑：`home` 及其之前折叠成一个「主目录」按钮；右侧「编辑路径」点开输入框，回车跳转，非法路径错误显示在对话框内。
+  - 当前路径全称可点，点一下也进入路径编辑。
+  - 主体列出 `entries`（`{name,path,hidden}`，隐藏目录标「隐藏」但可进入）；`truncated` 时显示「目录过多，只显示前 N 个」。
+  - 底部「新建文件夹」→ 输入名字 → `ui.createDirectory(当前目录, 名字)` → 成功后刷新并进入新目录（即选中它）；
+    `ui.createDirectory` 不存在时该按钮隐藏；`directory-picker/exists` 等错误显示在对话框内。
+  - 「取消」/ Esc / 点遮罩 = 关闭且**不**调用 `workspaces.create`；Enter = 确认当前目录（按钮上有焦点时由按钮自身处理）。
+  - `role="dialog"` + `aria-modal="true"` + `aria-label="选择项目目录"`；初始焦点在「选这个目录」（列表里每个目录行也可 Tab 到）。
+- `pickDirectory()` 不存在时回退 `remote.directoryPicker.pick()`；都没有就提示用原生 ＋。
 - `＋ 新会话`（项目卡片顶部，`dt-actions` 左）：`uiWorkspace.startSession(workspaceId, preset ? { agentPreset: preset } : undefined)`
   （宿主 `dsh-client-ui-workspace/lib/client.js:1499` 起，`options.agentPreset` 一路传到 `openWorkspace`）。
   项目传 `devteam`，员工传 `standard`。**宿主 `startSession` 是 void 且内部 console.warn + notify 吞错，成功也返回

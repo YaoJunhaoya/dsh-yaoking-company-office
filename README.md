@@ -184,16 +184,16 @@ npm i "link:D:\code\dsh-yaoking-company-office"
 
 装过一次以后，**不要重跑「方法 2」那条不带版本号的安装命令**：pnpm 看到 lockfile 里已有的旧版本（`^1.0.1` 或 `1.0.1`）就认为满足，直接跳过 resolution，终端显示 `Already up to date`，版本停在原地。
 
-**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.1.2**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
+**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.2.0**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
 
 ```bash
-dsh plugin --profile web add dsh-yaoking-company-office@1.1.2
+dsh plugin --profile web add dsh-yaoking-company-office@1.2.0
 ```
 
 国内默认源（`registry.npmmirror.com`）**滞后**，刚发布的版本常常还没同步。想拿刚发布的版本，显式走官方源：
 
 ```bash
-dsh plugin --profile web add dsh-yaoking-company-office@1.1.2 --registry=https://registry.npmjs.org/
+dsh plugin --profile web add dsh-yaoking-company-office@1.2.0 --registry=https://registry.npmjs.org/
 ```
 
 > 这条会同时把 `dependencies` 写成具体版本、把包装进 `node_modules`；`dsh.profile.bundles` 里本来就有本包，**不会重复登记**（实测仍只有一条）。
@@ -232,9 +232,11 @@ pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org
 
 **更新后自查三条**：
 
-1. 「插件」页里 `dsh-yaoking-company-office` 的版本号变成新版本，且没有 `broken`；
-2. 新建会话的模式下拉里 **「开发团队」** 还在；
-3. 左栏 **「团队面板」** 正常出现（只剩一个小胶囊就点 **「▾ 展开团队」**）。
+1. 「插件」页里 `dsh-yaoking-company-office` 的版本号变成了新版本；
+2. 它没有变成 `broken`；
+3. 新建会话的模式下拉里 **「开发团队」** 还在。
+
+顺手看一眼左栏：**「团队面板」** 应正常出现（只剩一个小胶囊就点 **「▾ 展开团队」**）。
 
 ### 装完检查三件事
 
@@ -252,7 +254,7 @@ pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org
 
 1. **看一眼左栏的「团队面板」**。它默认是展开的；如果只剩一个小胶囊，点 **「▾ 展开团队」**。
 2. **先建好项目文件夹**。插件不会替你建目录，先在 Finder 或终端里把这个项目的文件夹建好（放在哪都行，别放在插件源码目录里）。
-3. **点面板上的「新建项目工作区」**，选中刚才那个文件夹。它会：把目录注册成工作区 → 记进面板的项目列表 → 顺手开一个项目经理会话。
+3. **点面板上的「新建项目工作区」**，在弹出的框里选中刚才那个文件夹（外置盘、家目录外都行；想换个地方直接改路径，想新建就点「新建文件夹」）。它会：把目录注册成工作区 → 记进面板的项目列表 → 顺手开一个项目经理会话。
 4. **进项目经理会话。** 面板新建的会话已经带「开发团队」预设；权限不用手动设——会话守卫会把这个项目工作区里的会话自动切成「完全权限」，审批也自动放行。
 
    > 以前这一步要手动点「完全权限」，是因为新会话默认会停下来问审批，没人应答，他那一轮就永远停在那儿。守卫（`lib/guard.js`）就是把这步自动化了：顶部留了两个开关（`AUTO_FULL_ACCESS` / `AUTO_APPROVE`），关掉就退回手动点。
@@ -314,7 +316,7 @@ pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org
 
 | 位置 | 作用 |
 |---|---|
-| `＋ 新建项目工作区`（面板顶部） | 选目录 → 注册成工作区 → 归入项目列表 → 开一个项目经理（devteam）会话 |
+| `＋ 新建项目工作区`（面板顶部） | 打开面板自带的选目录框（macOS 上不再弹系统面板）：面包屑可点、路径可直接输入、**可当场新建文件夹** → 注册成工作区 → 归入项目列表 → 开一个项目经理（devteam）会话 |
 | 项目行 | 点一下展开/收起它的员工和会话 |
 | `＋ 新会话`（项目卡片顶部） | 给这个项目再开一个项目经理（devteam）会话。旧的卡片头 `＋` 图标与「开启新分析会话」行已合并到这一个入口 |
 | `＋ 招员工`（项目卡片顶部） | 打开项目经理会话，并在提示条给一句可直接复制的原话（如「招一个前端，负责……」）；**不会**当场招人，招聘仍由 PM 的 `team_hire` 执行 |
@@ -371,7 +373,16 @@ cd $env:USERPROFILE\.dsh\profiles\web; npm rm dsh-yaoking-company-office
 
 ## 更新日志
 
+### 1.2.0
+
+- **新建项目工作区改用应用内选目录框（macOS 不再弹系统面板）**：macOS 上系统 `NSOpenPanel` 由 `osascript` 拉起，左侧栏（收藏/位置/主目录）会被沙箱与前台激活判灰、点不动，也不便当场建文件夹。`cordis.patch.yml` 现在在 macOS 把 DSH 的选目录器固定成应用内浏览器（browse 后端）；Windows / Linux 维持原生面板。回滚：删掉该文件顶部 `- id: directory-picker` 两行与 insert 里的 `directory-picker-browse*` 两行。
+- **面板自带选目录对话框**：「＋ 新建项目工作区」打开插件自己的框——面包屑可点、路径可编辑（输入绝对路径回车跳转）、子目录列表（隐藏项标注）、**新建文件夹**（当场创建并自动进入）、「选这个目录」；取消不建任何工作区。
+- **修：软链路径导致新项目掉进「原始工作区」**：登记改用宿主返回的规范路径（`/tmp/x` → `/private/tmp/x`），面板才能把工作区认成项目。
+- **修：新建项目时项目经理会话一直没被创建**：`workspaces.create` 在 DSH 客户端返回的是工作区对象本身（不是 `{ok, value}` 外壳），旧代码读错字段导致工作区 id 取不到、自动开 PM 会话那段被静默跳过。现在两种返回形态都认，会话真会开；建不成会在面板顶部红条说明原因。
+- **修：面板错误提示条一直是绿的**：`bad` 判定同时认 `true` 与 `"bad"`，所有失败提示恢复红色。
+
 ### 1.1.2
+
 
 - **文档修订（代码未动）**：「三、安装」新增「更新（已经装过的人）」，放在安装方法与「装完检查三件事」之间。主推 `dsh plugin --profile web add dsh-yaoking-company-office@<版本号>`（国内用官方源 `--registry=https://registry.npmjs.org/`）；备选进 profile 目录直接跑 `pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org/`，给出 macOS / Linux 与 Windows PowerShell 两种 `cd`。写明 `dsh plugin … update` 与 `… add <包名>@latest` 当前不会真的升级（pnpm 跳过 resolution）、更新后必须完全重启、更新不动项目数据，以及更新后自查三条。首部「装法见三、安装」补「升级见同一节的『更新』」。
 
