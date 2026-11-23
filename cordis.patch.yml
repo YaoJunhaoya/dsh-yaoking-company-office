@@ -1,13 +1,70 @@
-# dsh-yaoking-company-office：「开发团队」模式 = 一个 preset 行 + 一个宿主身份行 + 一个会话守卫行。
+# dsh-yaoking-company-office：「开发团队」模式 = 两个 preset 行 + 一个宿主身份行 + 一个会话守卫行。
 #
 # 行 1（生效）是声明式 preset：insert 一条 @deepseek-ai/dsh-agent-preset 即完成注册，
 #   禁用插件时整行随 bundle 一起被 Loader 移除，磁盘不留残渣，不会留下 broken preset。
-#   plugins: 是 standard 的 22 行原样复制（id 与顺序一致），只有三处差异：
-#     · persona.prefix 换成项目经理人设；
+#   这一行现在有**两个副本**：
+#     · preset-company-office       → config.id: devteam（PM 会话）
+#     · preset-company-office-staff → config.id: staff  （员工会话）
+#   两份 plugins 都是上游 standard 的 22 行原样复制（id 与顺序一致）；staff 由 devteam
+#   逐字复制而来，只准出现「差异 B」那四条。**两份必须各自独立维护，绝不允许合并成一份。**
+#
+# 差异 A：devteam 相对上游 standard（三处）
+#     · persona.prefix 换成项目经理人设（PM 负责拆活/派活/验收，与员工完全不同）；
 #     · agent-instructions 多一个 projectRootMarkers: [".git", "team"]，
-#       让没跑过 git init 的项目也能把 <项目根>/AGENTS.md 加载给员工；
-#     · 末尾多一行 team-tools（三个 team_* 工具，只在本 preset 的会话里可见）。
-#   寄存器没有「preset 继承 preset」，所以复制是唯一的路；上游升级后 diff 一次 standard.patch.yml。
+#       让没跑过 git init 的项目也能把 <项目根>/AGENTS.md 加载给会话；
+#     · plugins 末尾多一行 team-tools（三个 team_* 工具，只在本 preset 的会话里可见）。
+#
+# 差异 B：staff 相对 devteam（四处，这也是全文件唯一该有的差异）
+#     · 删掉末尾的 team-tools 行 —— 员工不许有 team_* 工具，隔离红线不能破；
+#     · tool-ask-user 配成 config: {mode: timed, timeout: 90}（理由见下，不是可选项）；
+#     · persona.prefix 换成员工人设（只写自己岗位目录、不等真人回答）；
+#     · planning 组配 disabled: true + config: [] —— 员工整组禁用 plan mode（理由见下）。
+#   其余逐字相同，包括 agent-instructions 的 projectRootMarkers（员工也要读项目根 AGENTS.md）。
+#
+# 为什么 staff 必须 timed（2026-11-23 老板实测：员工问一句卡了 34 分钟）：
+#   宿主的 @deepseek-ai/dsh-tool-ask-user 默认 mode: 'legacy'（lib/index.js 的 Config
+#   默认就是 legacy），legacy 那版 ask_user_question 会无限期阻塞等真人回答；
+#   只有 mode === 'timed' 才注册带 timeout 参数、到点返回 { pending: true } 的那版
+#   （随后员工继续干活，问题卡片留在会话里可事后补答，答复以
+#   answer_to_pending_question 回到会话）。员工会话里通常没人在看 —— 老板在 PM 会话里，
+#   根本看不到员工在问什么 —— 所以 legacy 等于空等。timeout 取 90 秒：
+#   允许 1..2147483 秒，**绝不用 -1**（-1 = 永远等，正是这次的事故形态）。
+#   PM 会话（devteam）保持 legacy 不动：老板人就在 PM 会话里，当场答没毛病。
+#   注意：timed 只改 ask_user_question 这一个工具，**任何直接调 userQuestions.ask
+#   而不带 timeout 的交互都盖不住**（plan review 就是一条，见下一段）。升级或新增
+#   插件时得逐个核调用点，不能只看 ask_user_question。
+#
+# 为什么 staff 连 plan mode 也要关（2026-11-24 PM 顺着宿主源码查出的第二条路）：
+#   @deepseek-ai/dsh-plan-mode 的 exit_plan_mode 直接调
+#   ctx.get("userQuestions").ask({...})，**不传 timeout**（lib/index.js 约 250–300 行）。
+#   所以 tool-ask-user 的 mode: timed 只改「ask_user_question 那个工具」的 schema，
+#   管不到 plan review：员工一旦进 plan mode 再 exit_plan_mode，就会像这次事故一样
+#   无限期等一个不在场的人签字，而且这张卡片是 plan review 卡片，连
+#   ask_user_question 的位置上都不会出现。员工的活都是自包含任务书，没有人会审它的
+#   plan，plan mode 对员工只有害处 —— 整组关掉，不是「少用」而是「不可用」。
+#   具体做法：planning 行保留（上行/下行 diff 清楚，也让「staff 的 id 序列 =
+#   devteam 去掉 team-tools」这条断言继续成立），加 disabled: true；组里的
+#   plan-mode 子项整段删除，config 留空列表 []。**为什么留 [] 而不是删掉 config**：
+#   宿主 preset 注册表要求 group 行必须给插件行列表（agent-preset-registry 的
+#   entryListProblem：group … must hold a list of plugin rows），缺了 config 整条
+#   preset 会变 broken；空列表则同时满足 schema 和「组里没有任何可挂的子插件」。
+#   这样即使以后有人误删 disabled: true，plan-mode 也起不来（双保险），
+#   并且顺手消掉了 plan-mode 那一大段复制提示词的漂移风险（R-14）。
+#   devteam（PM）的 planning 保持原样：老板人就在 PM 会话里，plan review 有他签。
+#
+# 为什么不能合并（R-14 / R-15 漂移风险的唯一防线就在这里）：
+#   Loader 的寄存器（compose / patch / include）没有「preset 继承 preset」这回事 ——
+#   每条 @deepseek-ai/dsh-agent-preset 都是独立、完整的一份声明，父子/覆盖只在同一个
+#   会话作用域内成立，跨 preset 不行；宿主的 preset Config 也没有 conditional 字段。
+#   所以想给员工一套和 PM 不同的注入面，复制是**唯一**的路。
+#   代价：上游升级时两份都要手动 diff（R-14：复制品必然漂移），而 preset id 还被本包
+#   lib/client.js / lib/tools.js 多处硬编码（R-15）。上游升级的动作固定为：
+#     1) diff 上游 standard.patch.yml 与本文件两个 plugins 列表，先改 devteam 那份；
+#     2) 把同一批改动手工搬到 staff 那份 —— 除「差异 B」四条外必须逐字跟上；
+#     3) 跑 code-guard/check-staff-preset.mjs：断言两条 preset 的 config.id 是 devteam/staff、
+#        两份 plugins 的 id 序列除 team-tools 外完全一致、staff 的 tool-ask-user 是 timed/90、
+#        staff 的 planning 组 disabled: true 且组里没有可用的 plan-mode；
+#     4) 任一项不成立不许发版。上游新增/删除的插件最容易变成「PM 有、员工没有」的坑。
 #
 # 行 2（生效）是宿主身份行：lib/index.js 的 apply 是空的，它只为了让
 #   @deepseek-ai/dsh-client-modules 在扫描 Loader 条目时看到本包的 dsh.client，
@@ -209,6 +266,134 @@
             # dsh-my-questions-outline 的主行）都是这种写法：本机 link: 安装能用，
             # npm 安装到任何机器也能用。写死绝对路径只在开发者磁盘上成立。
             name: 'dsh-yaoking-company-office/tools'
+    # 员工 preset：plugins 由 devteam 逐字复制，只保留「差异 B」四处（见文件头）。
+    # team-tools 已删（员工不许有 team_*）；tool-ask-user 走 timed/90（不准空等真人）；
+    # planning 整组 disabled（exit_plan_mode 会绕过 timed，见文件头）；persona 换成员工人设。
+    # 上游升级时和 devteam 一起 diff，别只改一边。
+    - id: preset-company-office-staff
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: staff
+        name: 员工
+        description: 员工：只在自己的岗位目录产出，不等人回答，按最保守方案推进并写 REPORT。
+        order: 6
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                你是这个项目的员工，不是项目经理。产出只写自己的岗位目录，汇报写这个目录的 REPORT.md；项目根、别人的目录、team/ 都不要写。
+
+                先读项目根的 AGENTS.md 和本目录的 AGENTS.md，按里面的边界和规矩干活。
+
+                不要用 ask_user_question 等真人回答：没有人坐在你的会话里看问题，问了就是空等，这一轮会白白卡死。拿不准就按最保守、最容易回退的方案继续做，把假设写进 REPORT 的「假设」段，让项目经理事后核对。
+
+                确实需要人拍板的（要花钱、碰生产、或者两条路会做出完全不同的东西），写进 REPORT 的「需要你决定」段，front-matter 标 status: blocked，然后收工。
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+              projectRootMarkers: ['.git', 'team']
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          # 差异 B-4：员工整组禁用 plan mode（exit_plan_mode 绕过 timed，见文件头）。
+          # config: [] 是宿主 schema 要求（group 行必须给插件行列表）；空组 =
+          # 没有任何可挂的子插件，即使以后误删 disabled，plan-mode 也起不来。
+          - id: planning
+            name: cordis:group
+            group: true
+            disabled: true
+            config: []
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+            config:
+              mode: timed
+              timeout: 90
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: true
+          - id: tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
+            disabled: true
     # 诊断探针（默认关闭）：把注册表状态写进 /tmp/devteam-probe.log。排查时打开，见 lib/probe.js。
     # - id: company-office-probe
     #   name: 'dsh-yaoking-company-office/lib/probe.js'
