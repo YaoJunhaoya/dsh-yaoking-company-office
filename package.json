@@ -1,6 +1,6 @@
 {
   "name": "dsh-yaoking-company-office",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "DeepSeek Harness (DSH) 插件：「开发团队」工作模式 —— 每个项目一个项目经理，员工是项目下的子工作区，派活即开会话，左栏可直接管理。",
   "type": "module",
   "main": "lib/index.js",

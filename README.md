@@ -184,16 +184,16 @@ npm i "link:D:\code\dsh-yaoking-company-office"
 
 装过一次以后，**不要重跑「方法 2」那条不带版本号的安装命令**：pnpm 看到 lockfile 里已有的旧版本（`^1.0.1` 或 `1.0.1`）就认为满足，直接跳过 resolution，终端显示 `Already up to date`，版本停在原地。
 
-**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.2.1**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
+**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.2.2**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
 
 ```bash
-dsh plugin --profile web add dsh-yaoking-company-office@1.2.1
+dsh plugin --profile web add dsh-yaoking-company-office@1.2.2
 ```
 
 国内默认源（`registry.npmmirror.com`）**滞后**，刚发布的版本常常还没同步。想拿刚发布的版本，显式走官方源：
 
 ```bash
-dsh plugin --profile web add dsh-yaoking-company-office@1.2.1 --registry=https://registry.npmjs.org/
+dsh plugin --profile web add dsh-yaoking-company-office@1.2.2 --registry=https://registry.npmjs.org/
 ```
 
 > 这条会同时把 `dependencies` 写成具体版本、把包装进 `node_modules`；`dsh.profile.bundles` 里本来就有本包，**不会重复登记**（实测仍只有一条）。
@@ -372,6 +372,11 @@ cd $env:USERPROFILE\.dsh\profiles\web; npm rm dsh-yaoking-company-office
 - 没有群聊/作战室视图。员工之间靠文件和 PM 传递，不靠互相说话。
 
 ## 更新日志
+
+### 1.2.2
+
+- **会话计数同时给出「在跑几个」和「一共几个」**：项目经理行、员工行、「原始工作区」行与项目卡片头统一显示成 `● 3/15`（绿点 + 绿的在跑数 + 灰色的 `/总数`），没有在跑的会话时仍只显示灰色总数；tooltip 是「3 个正在运行，共 15 个会话」/「15 个会话，空闲」。
+- **面板宽度跟随原生左栏**：面板按宿主左栏的当前宽度（`gridTemplateColumns` 第一段）取像素宽度并写进 `--dt-width`，拖分隔条时实时跟着变；原生左栏收起时面板整体隐藏，不再盖住聊天区。
 
 ### 1.2.1
 
