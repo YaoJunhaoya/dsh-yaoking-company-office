@@ -186,16 +186,16 @@ npm i "link:D:\code\dsh-yaoking-company-office"
 
 装过一次以后，**不要重跑「方法 2」那条不带版本号的安装命令**：pnpm 看到 lockfile 里已有的旧版本（`^1.0.1` 或 `1.0.1`）就认为满足，直接跳过 resolution，终端显示 `Already up to date`，版本停在原地。
 
-**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.3.0**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
+**主推写法（跨平台）**：把 `<版本号>` 换成 npm 页面上的最新版本号（本文写作时是 **1.4.0**，以 [npm 页面](https://www.npmjs.com/package/dsh-yaoking-company-office) 为准），显式带上版本：
 
 ```bash
-dsh plugin --profile web add dsh-yaoking-company-office@1.3.0
+dsh plugin --profile web add dsh-yaoking-company-office@1.4.0
 ```
 
 国内默认源（`registry.npmmirror.com`）**滞后**，刚发布的版本常常还没同步。想拿刚发布的版本，显式走官方源：
 
 ```bash
-dsh plugin --profile web add dsh-yaoking-company-office@1.3.0 --registry=https://registry.npmjs.org/
+dsh plugin --profile web add dsh-yaoking-company-office@1.4.0 --registry=https://registry.npmjs.org/
 ```
 
 > 这条会同时把 `dependencies` 写成具体版本、把包装进 `node_modules`；`dsh.profile.bundles` 里本来就有本包，**不会重复登记**（实测仍只有一条）。
@@ -299,11 +299,12 @@ pnpm add dsh-yaoking-company-office@latest --registry=https://registry.npmjs.org
 | 工具 | 参数 | 做什么 |
 |---|---|---|
 | `team_hire` | `role`（单段 kebab，如 `fe`）`duty`（必填）`title?` `readFirst?` | 建 `<项目>/<role>/`、写岗位 `AGENTS.md`（已存在不覆盖）、注册成工作区、补 `team/` 与项目 `AGENTS.md` 骨架 |
-| `team_dispatch` | `role` `task` `title?` | 在员工工作区里新建**「员工」预设（staff）**会话 → 写 `team/runs/<时间>-<role>-task.md` → 把任务书投进去。**立刻返回，不等员工**。员工预设的提问 90 秒超时自动继续，不会空等真人。投递失败时把 task 标成 `status: undelivered`，返回 `delivered:false`（不重试、不删文件） |
+| `team_dispatch` | `role` `task` `title?` | 在员工工作区里新建**「员工」预设（staff）**会话 → 写 `team/runs/<时间>-<role>-task.md` → 把任务书投进去。**立刻返回，不等员工**。员工预设的提问 90 秒超时自动继续，不会空等真人。投递失败时把 task 标成 `status: undelivered`，返回 `delivered:false`（不重试、不删文件）。**员工会话一结束，PM 会话会自动收到一条【自动通知】**，PM 不用轮询 |
 | `team_status` | `role?` `since?` `limit?` | 读 `team/runs/` 的 front-matter，按 `taskId` 配对，返回未完成任务 + 最近汇报 + 谁在跑。`limit` 默认 200、最大 2000；返回 `scanned`（实际扫了几个文件）与 `truncated`。`since` 同时过滤 task 与 report |
 | `team_report` | `role` `taskId?` `status?` `files?` | 读 `<role>/REPORT.md`，用 front-matter 的 `taskId`（或参数）匹配一条尚未汇报的 task，写 `team/runs/<时间>-<role>-report.md`。匹配不到 / 缺 taskId / 没有 REPORT.md 都拒绝且不写文件 |
 
 `accepted: true` 只代表**投递成功**，不代表做完。验收永远要看 `team_status` 的 `lastReport`，以及 PM 自己打开文件看。
+自动通知只在 PM 处理时出现：员工会话从「在跑」变成「不在跑」后最多 15 秒，PM 会话会多一条 `【自动通知】<role> 的会话已结束`，PM 收到后才去验收。重启 DSH 后，重启前派出的会话不再补通知（用 `team_status` 看）。
 
 - `team_dispatch` 成功还会返回 `delivered: true`；失败是 `delivered: false` + `runFile`，那条 task 的 front-matter 已被改成 `status: undelivered`。
 - `team_status` 的 `scanned` 是实际读取的 runs 文件数，`truncated` 表示是否因 `limit` 截断；`openTasks[].status` 可能是 `assigned` 或 `undelivered`——看到 `undelivered` 先重派或修会话，不要当员工在干活。
@@ -377,6 +378,13 @@ cd $env:USERPROFILE\.dsh\profiles\web; npm rm dsh-yaoking-company-office
 - **员工预设禁用了 plan mode**：plan review 走的是另一条不受 90 秒限制的通道，员工一旦进去就会等一个不会来的签字，所以整组关掉。
 
 ## 更新日志
+
+### 1.4.0
+
+- **员工会话结束，PM 自动收到通知**：派活后不再需要轮询 `team_status`、也不用老板提醒。插件每 15 秒看一次会话状态，员工从「在跑」变成「不在跑」就给 PM 会话投一条极短通知（`【自动通知】<role> 的会话已结束 …`），PM 收到后才去归档与验收。只在有在监视的会话时扫描，没人派活就不空转；重启前派出的会话不补通知。
+- **任务书变短了**：`taskBook` 从 26 行压到 8 行（约 350 字），只保留「任务原文 + 写完 REPORT 就收工」。PM 人设把「任务书只有三样：做什么 / 产出放哪 / 怎么算完，三五句话」写成硬规矩，明令不写背景长文、不拆多岗串行、不为「完整」加轮次。
+- **验收只在最后做一次**：员工人设新增「做完就停」——写完 REPORT 回一句就结束，不做收工前的全面自查、回归测试、补文档、等确认；PM 也只在收到自动通知后验收，不重复跑员工跑过的检查。
+- **省钱**：PM 人设加了 token 纪律（回答短、只读相关段、STATE.md 三行以内、不写已完成清单），员工模板与任务书同步瘦身。
 
 ### 1.3.0
 
